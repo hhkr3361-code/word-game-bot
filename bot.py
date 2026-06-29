@@ -1,52 +1,81 @@
 import os
-import anthropic
 from telegram import Update, InlineQueryResultArticle, InputTextMessageContent
 from telegram.ext import Application, CommandHandler, InlineQueryHandler, ContextTypes
 import uuid
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-
-CATEGORIES = {
-    "ولد": "اسم ولد عربي",
-    "بنت": "اسم بنت عربي",
-    "حيوان": "اسم حيوان بالعربي",
-    "جماد": "اسم جماد بالعربي",
-    "دولة": "اسم دولة بالعربي",
-    "مدينة": "اسم مدينة بالعربي",
+NAMES = {
+    "ولد": {
+        "ا": "أحمد", "ب": "بلال", "ت": "تيم", "ث": "ثامر", "ج": "جاسم",
+        "ح": "حسن", "خ": "خالد", "د": "داود", "ذ": "ذياب", "ر": "رامي",
+        "ز": "زياد", "س": "سالم", "ش": "شهاب", "ص": "صالح", "ض": "ضرار",
+        "ط": "طارق", "ظ": "ظافر", "ع": "عمر", "غ": "غانم", "ف": "فيصل",
+        "ق": "قاسم", "ك": "كريم", "ل": "لؤي", "م": "محمد", "ن": "ناصر",
+        "ه": "هاشم", "و": "وليد", "ي": "يوسف", "ى": "يوسف", "أ": "أحمد",
+    },
+    "بنت": {
+        "ا": "آية", "ب": "بتول", "ت": "تالا", "ث": "ثريا", "ج": "جنى",
+        "ح": "حلا", "خ": "خلود", "د": "دانا", "ذ": "ذكرى", "ر": "رنا",
+        "ز": "زينب", "س": "سارة", "ش": "شيماء", "ص": "صفاء", "ض": "ضحى",
+        "ط": "طيبة", "ظ": "ظلال", "ع": "علا", "غ": "غادة", "ف": "فاطمة",
+        "ق": "قمر", "ك": "كوثر", "ل": "لينا", "م": "مريم", "ن": "نور",
+        "ه": "هند", "و": "وفاء", "ي": "يسرا", "ى": "يسرا", "أ": "أميرة",
+    },
+    "حيوان": {
+        "ا": "أسد", "ب": "ببر", "ت": "تمساح", "ث": "ثعلب", "ج": "جمل",
+        "ح": "حصان", "خ": "خروف", "د": "دب", "ذ": "ذئب", "ر": "ربوع",
+        "ز": "زرافة", "س": "سلحفاة", "ش": "شيمبانزي", "ص": "صقر", "ض": "ضبع",
+        "ط": "طاووس", "ظ": "ظبي", "ع": "عقرب", "غ": "غزال", "ف": "فيل",
+        "ق": "قرد", "ك": "كلب", "ل": "لبؤة", "م": "مها", "ن": "نمر",
+        "ه": "هدهد", "و": "وعل", "ي": "يمامة", "ى": "يمامة", "أ": "أرنب",
+    },
+    "جماد": {
+        "ا": "إبرة", "ب": "باب", "ت": "تلفاز", "ث": "ثلاجة", "ج": "جدار",
+        "ح": "حجر", "خ": "خزنة", "د": "دلو", "ذ": "ذهب", "ر": "رمل",
+        "ز": "زجاج", "س": "سيف", "ش": "شمعة", "ص": "صخرة", "ض": "ضوء",
+        "ط": "طاولة", "ظ": "ظرف", "ع": "عمود", "غ": "غطاء", "ف": "فنجان",
+        "ق": "قلم", "ك": "كرسي", "ل": "لوح", "م": "مرآة", "ن": "نافذة",
+        "ه": "هاتف", "و": "ورق", "ي": "يد ساعة", "ى": "يد ساعة", "أ": "أنبوب",
+    },
+    "دولة": {
+        "ا": "الأردن", "ب": "البرازيل", "ت": "تركيا", "ث": "ثايلاند", "ج": "الجزائر",
+        "ح": "الحبشة", "خ": "خوارزم", "د": "الدنمارك", "ذ": "ذيبوتي", "ر": "روسيا",
+        "ز": "زامبيا", "س": "السعودية", "ش": "شيلي", "ص": "الصومال", "ض": "ضائع",
+        "ط": "طاجيكستان", "ظ": "ظُفار", "ع": "عُمان", "غ": "غانا", "ف": "فرنسا",
+        "ق": "قطر", "ك": "الكويت", "ل": "لبنان", "م": "مصر", "ن": "نيجيريا",
+        "ه": "هولندا", "و": "اليمن", "ي": "اليابان", "ى": "اليابان", "أ": "الأرجنتين",
+    },
+    "مدينة": {
+        "ا": "أبوظبي", "ب": "بغداد", "ت": "طرابلس", "ث": "ثيسالونيكي", "ج": "جدة",
+        "ح": "حلب", "خ": "خانيونس", "د": "دبي", "ذ": "ذمار", "ر": "الرياض",
+        "ز": "الزرقاء", "س": "سيول", "ش": "شيراز", "ص": "صنعاء", "ض": "الضفة",
+        "ط": "طهران", "ظ": "الظهران", "ع": "عمّان", "غ": "غزة", "ف": "فاس",
+        "ق": "القاهرة", "ك": "كربلاء", "ل": "لندن", "م": "الموصل", "ن": "النجف",
+        "ه": "هامبورغ", "و": "وارسو", "ي": "يافا", "ى": "يافا", "أ": "أنقرة",
+    },
 }
 
-def get_name(category: str, letter: str) -> str:
-    prompt = f"""أنت مساعد لعبة كلمات عربية.
-أعطني اسماً عربياً واحداً فقط من فئة "{category}" يبدأ بحرف "{letter}".
-شروط:
-- اسم عربي حقيقي ومعروف
-- يبدأ بالحرف المطلوب تحديداً
-- اسم واحد فقط بدون أي شرح أو علامات ترقيم
-- لا تكتب إلا الاسم فقط"""
-
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=50,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return message.content[0].text.strip()
+CATEGORY_ALIASES = {
+    "ولد": "ولد", "اسم ولد": "ولد",
+    "بنت": "بنت", "اسم بنت": "بنت",
+    "حيوان": "حيوان",
+    "جماد": "جماد",
+    "دولة": "دولة",
+    "مدينة": "مدينة",
+}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "أهلاً! أنا بوت مساعد لعبة الكلمات 🎮\n\n"
+        "أهلاً! 🎮 بوت لعبة الكلمات\n\n"
         "الاستخدام في أي محادثة:\n"
-        "@اسم_البوت [فئة] [حرف]\n\n"
-        "مثال: @اسم_البوت حيوان ب\n\n"
-        "الفئات المتاحة:\n"
-        "ولد | بنت | حيوان | جماد | دولة | مدينة"
+        "@xxxvveeebot [فئة] [حرف]\n\n"
+        "مثال: @xxxvveeebot حيوان ب\n\n"
+        "الفئات: ولد | بنت | حيوان | جماد | دولة | مدينة"
     )
 
 async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.inline_query.query.strip()
-
     if not query:
         return
 
@@ -54,32 +83,26 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(parts) < 2:
         return
 
-    category_input = parts[0]
-    letter = parts[1]
+    cat_input = parts[0]
+    letter = parts[1][0] if parts[1] else ""
 
-    # match category
-    category = None
-    for key in CATEGORIES:
-        if key in category_input:
-            category = CATEGORIES[key]
-            break
-
+    category = CATEGORY_ALIASES.get(cat_input)
     if not category or not letter:
         return
 
-    try:
-        name = get_name(category, letter)
-        results = [
-            InlineQueryResultArticle(
-                id=str(uuid.uuid4()),
-                title=f"✅ {name}",
-                description=f"{category_input} — حرف {letter}",
-                input_message_content=InputTextMessageContent(name),
-            )
-        ]
-        await update.inline_query.answer(results, cache_time=1)
-    except Exception as e:
-        pass
+    name = NAMES.get(category, {}).get(letter)
+    if not name:
+        return
+
+    results = [
+        InlineQueryResultArticle(
+            id=str(uuid.uuid4()),
+            title=f"✅ {name}",
+            description=f"{category} — حرف {letter}",
+            input_message_content=InputTextMessageContent(name),
+        )
+    ]
+    await update.inline_query.answer(results, cache_time=0)
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
