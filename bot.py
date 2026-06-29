@@ -4,6 +4,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, InlineQueryHandler,
 from uuid import uuid4
 
 TOKEN = "8997876339:AAEvNsnToUWcQIlovWZfnLJ4rLgjm2FrPH4"
+OWNER_ID = 7065051011
 
 DATA = {
     "حيوان": {
@@ -54,9 +55,10 @@ ALIASES = {
 logging.basicConfig(level=logging.INFO)
 
 async def inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.inline_query.query.strip()
-    results = []
+    if update.inline_query.from_user.id != OWNER_ID:
+        return
 
+    query = update.inline_query.query.strip()
     if not query:
         return
 
@@ -72,16 +74,18 @@ async def inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
     answer = DATA[category].get(letter)
 
     if answer:
-        results.append(InlineQueryResultArticle(
+        results = [InlineQueryResultArticle(
             id=str(uuid4()),
             title=f"⚡ {answer}",
             description=f"{category} — حرف {letter}",
             input_message_content=InputTextMessageContent(answer)
-        ))
-
-    await update.inline_query.answer(results, cache_time=0)
+        )]
+        await update.inline_query.answer(results, cache_time=0)
 
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.from_user.id != OWNER_ID:
+        return
+
     text = update.message.text.strip()
     parts = text.split()
 
