@@ -1,6 +1,7 @@
 import logging
-from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
+from telegram import Update, InlineQueryResultArticle, InputTextMessageContent
+from telegram.ext import ApplicationBuilder, MessageHandler, InlineQueryHandler, filters, ContextTypes
+from uuid import uuid4
 
 TOKEN = "8997876339:AAEvNsnToUWcQIlovWZfnLJ4rLgjm2FrPH4"
 
@@ -52,12 +53,40 @@ ALIASES = {
 
 logging.basicConfig(level=logging.INFO)
 
+async def inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.inline_query.query.strip()
+    results = []
+
+    if not query:
+        return
+
+    parts = query.split()
+    if len(parts) < 2:
+        return
+
+    category = ALIASES.get(parts[0])
+    if not category:
+        return
+
+    letter = parts[1][0]
+    answer = DATA[category].get(letter)
+
+    if answer:
+        results.append(InlineQueryResultArticle(
+            id=str(uuid4()),
+            title=f"⚡ {answer}",
+            description=f"{category} — حرف {letter}",
+            input_message_content=InputTextMessageContent(answer)
+        ))
+
+    await update.inline_query.answer(results, cache_time=0)
+
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     parts = text.split()
 
     if len(parts) < 2:
-        await update.message.reply_text("اكتب: فئة حرف\nمثال: حيوان ح\nأو: ولد م\nأو: دولة س")
+        await update.message.reply_text("اكتب: فئة حرف\nمثال: حيوان ح")
         return
 
     category = ALIASES.get(parts[0])
@@ -74,6 +103,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(InlineQueryHandler(inline))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
     print("✅ البوت شغال...")
     app.run_polling()
